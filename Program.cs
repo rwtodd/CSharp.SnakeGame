@@ -11,7 +11,6 @@ namespace SnakeGame
         private ConsoleColor orig;   /* save off the original to restore */
         private int Speed = 140;     /* how fast? (lower = faster) */
         private int SpFactor = 0;    /* adjustment for vertical movement */
-        private ConsoleKey lastKey;  /* from the reading thread */
         private Apples apples;       /* the apple for the snake */
 
         private void InitConsole()
@@ -27,24 +26,11 @@ namespace SnakeGame
             {
                 Console.Write('~');
             }
-
-            var thread = new Thread(() =>
-            {
-                while (true)
-                {
-                    var newKey = Console.ReadKey(true).Key;
-                    lock (this)
-                    {
-                        lastKey = newKey;
-                    }
-                }
-            });
-            thread.IsBackground = true;
-            thread.Start();
         }
 
         private void ResetConsole()
         {
+            while(Console.KeyAvailable) { Console.ReadKey(true); } // flush the input buffer
             Console.CursorVisible = true;
             Console.ForegroundColor = orig;
         }
@@ -59,15 +45,10 @@ namespace SnakeGame
             grow = 1;  /* grow the first round */
         }
 
-        public void ReadUserInput()
+        public void CheckUserInput()
         {
-            ConsoleKey k;
-            lock (this)
-            {
-                k = lastKey;
-                lastKey = default;
-            }
-            switch (k)
+            if(Console.KeyAvailable)
+            switch (Console.ReadKey(true).Key)
             {
                 case ConsoleKey.UpArrow:
                     snake.ChangeDirection(0, -1);
@@ -132,10 +113,9 @@ namespace SnakeGame
             while (true)
             {
                 System.Threading.Thread.Sleep(Speed + SpFactor);
+                CheckUserInput();
 
-                ReadUserInput();
                 snake.Move(ref mr, grow > 0);
-                --grow;
 
                 if (OutOfBounds() || snake.SelfCollision()) break;
 
@@ -148,12 +128,15 @@ namespace SnakeGame
                     DrawApple();
                     if (Speed > 10) { Speed -= 10; }
                 }
+                else
+                {
+                    if (grow > 0) --grow;
+                }
             }
 
             bool OutOfBounds() =>
                 (mr.NewHead.X >= Console.WindowWidth) ||
                 (mr.NewHead.Y >= Console.WindowHeight - 1);
-
         }
 
         public static void Main(string[] args)
