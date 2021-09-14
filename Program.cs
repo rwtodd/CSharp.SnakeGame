@@ -3,17 +3,11 @@ using System.Threading;
 
 namespace SnakeGame
 {
-
-    public class Program
+    internal readonly struct ConsoleControl : IDisposable
     {
-        private Snake snake;         /* the snake body */
-        private int grow;            /* will the snake grow this round? (>0)  */
-        private ConsoleColor orig;   /* save off the original to restore */
-        private int Speed = 140;     /* how fast? (lower = faster) */
-        private int SpFactor = 0;    /* adjustment for vertical movement */
-        private Apples apples;       /* the apple for the snake */
+        private readonly ConsoleColor orig;   /* save off the original to restore */
 
-        private void InitConsole()
+        internal ConsoleControl(string instructions)
         {
             Console.Clear();
             Console.CursorVisible = false;
@@ -21,19 +15,30 @@ namespace SnakeGame
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.SetCursorPosition(0, Console.WindowHeight - 1);
-            Console.Write("Stay in bounds, eat apples (a), don't cross yourself.");
+            //Console.Write();
+            Console.Write(instructions);
             while (Console.CursorLeft < (Console.WindowWidth - 1))
             {
                 Console.Write('~');
             }
         }
 
-        private void ResetConsole()
+        public void Dispose()
         {
-            while(Console.KeyAvailable) { Console.ReadKey(true); } // flush the input buffer
+            while (Console.KeyAvailable) { Console.ReadKey(true); } // flush the input buffer
             Console.CursorVisible = true;
             Console.ForegroundColor = orig;
         }
+    }
+
+    public class Program
+    {
+        private Snake snake;         /* the snake body */
+        private int grow;            /* will the snake grow this round? (>0)  */
+        private int Speed = 140;     /* how fast? (lower = faster) */
+        private int SpFactor = 0;       /* adjustment for vertical movement */
+        private readonly Apples apples; /* the apple for the snake */
+        private bool gameOn;         /* is the game still on? */
 
         public Program()
         {
@@ -43,36 +48,36 @@ namespace SnakeGame
                 Console.WindowHeight - 1,
                 snake.Collision);
             grow = 1;  /* grow the first round */
+            gameOn = true;
         }
 
         public void CheckUserInput()
         {
-            if(Console.KeyAvailable)
-            switch (Console.ReadKey(true).Key)
-            {
-                case ConsoleKey.UpArrow:
-                    snake.ChangeDirection(0, -1);
-                    SpFactor = Speed / 2;
-                    break;
-                case ConsoleKey.DownArrow:
-                    snake.ChangeDirection(0, 1);
-                    SpFactor = Speed / 2;
-                    break;
-                case ConsoleKey.LeftArrow:
-                    snake.ChangeDirection(-1, 0);
-                    SpFactor = 0;
-                    break;
-                case ConsoleKey.RightArrow:
-                    snake.ChangeDirection(1, 0);
-                    SpFactor = 0;
-                    break;
-                case ConsoleKey.Q:
-                    ResetConsole();
-                    Environment.Exit(0);
-                    break;
-                default:
-                    break;
-            }
+            if (Console.KeyAvailable)
+                switch (Console.ReadKey(true).Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        snake.ChangeDirection(0, -1);
+                        SpFactor = Speed / 2;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        snake.ChangeDirection(0, 1);
+                        SpFactor = Speed / 2;
+                        break;
+                    case ConsoleKey.LeftArrow:
+                        snake.ChangeDirection(-1, 0);
+                        SpFactor = 0;
+                        break;
+                    case ConsoleKey.RightArrow:
+                        snake.ChangeDirection(1, 0);
+                        SpFactor = 0;
+                        break;
+                    case ConsoleKey.Q:
+                        gameOn = false;
+                        break;
+                    default:
+                        break;
+                }
         }
 
         private void DrawApple()
@@ -110,7 +115,7 @@ namespace SnakeGame
 
             var mr = new MovementResult();
 
-            while (true)
+            while (gameOn)
             {
                 System.Threading.Thread.Sleep(Speed + SpFactor);
                 CheckUserInput();
@@ -142,14 +147,13 @@ namespace SnakeGame
         public static void Main(string[] args)
         {
             var game = new Program();
-            game.InitConsole();
             try
             {
+                using var _ = new ConsoleControl("Stay in bounds, eat apples (a), don't cross yourself.");
                 game.RunGame();
             }
             finally
             {
-                game.ResetConsole();
                 Console.WriteLine("\n\nYou died.  You had eaten {0} apples.", game.apples.Count);
             }
         }

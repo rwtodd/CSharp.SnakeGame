@@ -7,9 +7,8 @@ namespace SnakeGame
 
     public class Apples
     {
-        private System.Random rnd;
+        private readonly System.Random rnd; /* random generator for placing apples */
         public Location Current { get; private set; }
-
         public Int32 Count { get; private set; }
 
         public Apples()
